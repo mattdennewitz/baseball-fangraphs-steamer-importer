@@ -106,6 +106,7 @@ class SteamerSpider(scrapy.Spider):
 
         # pass combined projections to gamelog extraction
         req = scrapy.Request(get_gamelog_url(player_id),
+                             dont_filter=True,
                              callback=self.parse_previous_year_gamelog)
         req.meta.update(player_id=player_id,
                         player_name=player_name,

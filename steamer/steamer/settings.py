@@ -14,6 +14,8 @@ BOT_NAME = 'steamer'
 SPIDER_MODULES = ['steamer.spiders']
 NEWSPIDER_MODULE = 'steamer.spiders'
 
+DUPEFILTER_CLASS = 'scrapy.dupefilters.BaseDupeFilter'
+
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'steamer (+http://www.yourdomain.com)'
