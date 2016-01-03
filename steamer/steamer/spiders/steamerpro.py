@@ -111,8 +111,6 @@ class SteamerSpider(scrapy.Spider):
         player_type = T_PITCHER if 'W' in components else T_BATTER
         gamelog_url = get_gamelog_url(player_id, position)
 
-        self.logger.info('Player {} is a {}'.format(player_name, player_type))
-
         # pass combined projections to gamelog extraction
         req = scrapy.Request(gamelog_url,
                              dont_filter=True,
