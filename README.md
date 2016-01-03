@@ -54,6 +54,15 @@ and write the output to a JSOn file called "trout-bryant.json"
 $ scrapy crawl steamerpro -a player_ids=10155,15429 -o trout-bryant.json
 ```
 
+### CSV output
+
+To convert output from this app to CSV, use the included
+`steamer-to-csv` script:
+
+```shell
+$ cat /path/to/your-output-file.json | python steamer-to-csv.py - /path/to/output.csv
+```
+
 ## Support Steamer and Fangraphs
 
 Without their combined efforts, this effort would not be possible.
