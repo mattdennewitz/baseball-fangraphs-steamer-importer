@@ -10,3 +10,4 @@ class Projection(scrapy.Item):
     player_name = scrapy.Field()
     components = scrapy.Field()
     positions = scrapy.Field()
+    handedness = scrapy.Field()

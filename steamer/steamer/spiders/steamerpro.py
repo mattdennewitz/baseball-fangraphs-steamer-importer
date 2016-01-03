@@ -74,6 +74,7 @@ class SteamerSpider(scrapy.Spider):
         player_id = qs_bits['playerid'][0]
         position = qs_bits['position'][0]
 
+        # get player name
         player_name = (response.css('div#content table:first-of-type table'
                                     '  tr:first-of-type span strong::text')
                        .extract_first()
@@ -81,6 +82,12 @@ class SteamerSpider(scrapy.Spider):
 
         self.logger.debug('Fetching projections for {} ({})'.format(
                           player_name, player_id))
+
+        bats_throws = response.xpath("""
+            //table//div//strong[contains(., "Bats")]/following-sibling::text()[1]
+        """)
+        bats_throws = bats_throws.extract_first().strip()
+        bats, throws = bats_throws.split('/')
 
         components = {}
 
@@ -118,6 +125,10 @@ class SteamerSpider(scrapy.Spider):
         req.meta.update(player_id=player_id,
                         player_name=player_name,
                         player_type=player_type,
+                        handedness={
+                            'bats': bats,
+                            'throws': throws,
+                        },
                         components=components)
         yield req
 
@@ -175,4 +186,5 @@ class SteamerSpider(scrapy.Spider):
         yield Projection(player_id=response.meta['player_id'],
                          player_name=response.meta['player_name'],
                          components=response.meta['components'],
+                         handedness=response.meta['handedness'],
                          positions=positions)
