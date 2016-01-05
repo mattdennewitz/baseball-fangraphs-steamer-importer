@@ -185,6 +185,7 @@ class SteamerSpider(scrapy.Spider):
 
         yield Projection(player_id=response.meta['player_id'],
                          player_name=response.meta['player_name'],
+                         player_type=response.meta['player_type'],
                          components=response.meta['components'],
                          handedness=response.meta['handedness'],
                          positions=positions)
