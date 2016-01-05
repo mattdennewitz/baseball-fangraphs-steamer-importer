@@ -8,6 +8,7 @@ class Projection(scrapy.Item):
 
     player_id = scrapy.Field()
     player_name = scrapy.Field()
+    player_type = scrapy.Field()
     components = scrapy.Field()
     positions = scrapy.Field()
     handedness = scrapy.Field()

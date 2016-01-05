@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import collections
+import decimal
 import os
+import re
 import unicodecsv as csv
 import urlparse
 
@@ -16,11 +18,21 @@ GAMELOG_URL = 'http://www.fangraphs.com/statsd.aspx?playerid={player_id}&positio
 T_PITCHER = 'p'
 T_BATTER = 'b'
 
+PCT_RE = re.compile(r'([\.\d]+)\s+?%')
+
 
 def parse_player_ids(value):
     if value:
         return [v.strip() for v in value.split(',')]
     return value
+
+
+def parse_decimal(value):
+    match = PCT_RE.match(value)
+    if not match:
+        return None
+    value = decimal.Decimal(match.group(1))
+    return value / decimal.Decimal('100.0')
 
 
 def get_player_url(player_id):
@@ -103,12 +115,17 @@ class SteamerSpider(scrapy.Spider):
         """)
 
         for table in tables:
+            # get component header keys
             keys = table.xpath('./thead/tr/th//text()').extract()
+
             values = []
 
             for cell in table.xpath('tbody/tr[td[contains(.,"Steamer")]]/td'):
                 value = cell.xpath('text()').extract_first() or ''
-                values.append(value.strip())
+                value = value.strip()
+                if value.endswith('%'):
+                    value = parse_decimal(value)
+                values.append(value)
 
             components.update(**dict(zip(keys, values)))
 
