@@ -1,4 +1,4 @@
-from collections import OrderedDict
+import collections
 import json
 
 import click
@@ -27,24 +27,29 @@ def parse_object(obj, path=''):
 
 
 @click.command()
-@click.argument('input_fp', type=click.File('rb'), required=True)
+@click.option('-t', 'player_type',
+              type=click.Choice(('batting', 'pitching', )))
+@click.option('-i', 'input_fp', type=click.File('rb'), required=True)
 @click.argument('output_fp', type=click.File('w'), required=True)
-def convert(input_fp, output_fp):
-    data = json.load(input_fp, object_pairs_hook=OrderedDict)
+def convert(player_type, input_fp, output_fp):
+    data = json.load(input_fp, object_pairs_hook=collections.OrderedDict)
 
     if not isinstance(data, list):
         raise click.BadParameter('JSON input object must be a list')
 
     keys = set()
     rows = []
-
-    # headers = sorted(parse_object(data[0]).keys())
-    # writer = csv.DictWriter(output_fp, headers)
+    valid_type = 'b' if player_type == 'batting' else 'p'
 
     for projection in data:
+        if not projection['player_type'] == valid_type:
+            continue
+
         projection = parse_object(projection)
+
         for key in projection:
             keys.add(key)
+
         rows.append(projection)
 
     headers = sorted(keys)
