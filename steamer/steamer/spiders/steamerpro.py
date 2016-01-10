@@ -85,6 +85,7 @@ class SteamerSpider(scrapy.Spider):
         qs_bits = urlparse.parse_qs(url_bits.query)
         player_id = qs_bits['playerid'][0]
         position = qs_bits['position'][0]
+        player_type = T_PITCHER if position == 'P' else T_BATTER
 
         # get player name
         player_name = (response.css('div#content table:first-of-type table'
@@ -118,6 +119,10 @@ class SteamerSpider(scrapy.Spider):
             # get component header keys
             keys = table.xpath('./thead/tr/th//text()').extract()
 
+            # prefix all keys with player type const
+            keys = ['{}_{}'.format(player_type, key).upper()
+                    for key in keys]
+
             values = []
 
             for cell in table.xpath('tbody/tr[td[contains(.,"Steamer")]]/td'):
@@ -132,7 +137,6 @@ class SteamerSpider(scrapy.Spider):
         # remove "Team" column, which should always be "Steamer"
         components.pop('Team', None)
 
-        player_type = T_PITCHER if 'W' in components else T_BATTER
         gamelog_url = get_gamelog_url(player_id, position)
 
         # pass combined projections to gamelog extraction
