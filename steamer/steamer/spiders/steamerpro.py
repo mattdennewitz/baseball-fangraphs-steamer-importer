@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import collections
 import decimal
 import os
 import re
@@ -19,6 +18,21 @@ T_PITCHER = 'p'
 T_BATTER = 'b'
 
 PCT_RE = re.compile(r'([\.\d]+)\s+?%')
+
+BATTING_POSITIONS = {
+    'C':  0,
+    '1B': 0,
+    '2B': 0,
+    'SS': 0,
+    'LF': 0,
+    'CF': 0,
+    'RF': 0,
+    'DH': 0,
+    'PH': 0,
+    'PR': 0,
+}
+
+PITCHING_POSITIONS = {'SP': 0, 'RP': 0}
 
 
 def parse_player_ids(value):
@@ -115,6 +129,13 @@ class SteamerSpider(scrapy.Spider):
             ]
         """)
 
+        tables = list(tables)
+
+        if len(tables) == 0:
+            self.logger.warn('Skipping unprojected player: {}'
+                             .format(player_id))
+            return
+
         for table in tables:
             # get component header keys
             keys = table.xpath('./thead/tr/th//text()').extract()
@@ -129,7 +150,7 @@ class SteamerSpider(scrapy.Spider):
                 value = cell.xpath('text()').extract_first() or ''
                 value = value.strip()
                 if value.endswith('%'):
-                    value = parse_decimal(value)
+                    value = unicode(parse_decimal(value))
                 values.append(value)
 
             components.update(**dict(zip(keys, values)))
@@ -151,10 +172,10 @@ class SteamerSpider(scrapy.Spider):
                             'throws': throws,
                         },
                         components=components)
-        yield req
+        return req
 
     def get_pitcher_profile(self, selector):
-        tally = collections.Counter()
+        tally = PITCHING_POSITIONS.copy()
 
         for cell in selector.xpath(
             '//table[@class="rgMasterTable"]/tbody/'
@@ -177,7 +198,7 @@ class SteamerSpider(scrapy.Spider):
         if bool(int(has_positions)) == False:
             return {}
 
-        tally = collections.Counter()
+        tally = BATTING_POSITIONS.copy()
 
         for cell in selector.xpath(
             '//table[@class="rgMasterTable"]/tbody/'
@@ -204,9 +225,9 @@ class SteamerSpider(scrapy.Spider):
         else:
             positions = self.get_batter_profile(response)
 
-        yield Projection(player_id=response.meta['player_id'],
-                         player_name=response.meta['player_name'],
-                         player_type=response.meta['player_type'],
-                         components=response.meta['components'],
-                         handedness=response.meta['handedness'],
-                         positions=positions)
+        return Projection(player_id=response.meta['player_id'],
+                          player_name=response.meta['player_name'],
+                          player_type=response.meta['player_type'],
+                          components=response.meta['components'],
+                          handedness=response.meta['handedness'],
+                          positions=positions)
