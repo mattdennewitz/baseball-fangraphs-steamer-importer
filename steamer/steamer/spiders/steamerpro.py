@@ -24,15 +24,17 @@ BATTING_POSITIONS = {
     '1B': 0,
     '2B': 0,
     'SS': 0,
+    '3B': 0,
     'LF': 0,
     'CF': 0,
     'RF': 0,
     'DH': 0,
     'PH': 0,
     'PR': 0,
+    'P':  0,
 }
 
-PITCHING_POSITIONS = {'SP': 0, 'RP': 0}
+PITCHING_POSITIONS = {'SP': 0, 'RP': 0, 'P': 0}
 
 
 def parse_player_ids(value):
@@ -132,8 +134,8 @@ class SteamerSpider(scrapy.Spider):
         tables = list(tables)
 
         if len(tables) == 0:
-            self.logger.warn('Skipping unprojected player: {}'
-                             .format(player_id))
+            self.logger.warning('Skipping unprojected player: {}'
+                                .format(player_id))
             return
 
         for table in tables:
