@@ -125,7 +125,7 @@ class SteamerSpider(scrapy.Spider):
             //table[
                 @class="rgMasterTable"
                 and tbody[
-                    tr/td[contains(., "2016")]
+                    tr/td[contains(., "2017")]
                     and tr/td[contains(., "Steamer")]
                 ]
             ]
