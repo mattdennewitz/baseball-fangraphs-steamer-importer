@@ -28,8 +28,8 @@ CONCURRENT_REQUESTS=4
 # See also autothrottle settings and docs
 #DOWNLOAD_DELAY=3
 # The download delay setting will honor only one of:
-#CONCURRENT_REQUESTS_PER_DOMAIN=16
-#CONCURRENT_REQUESTS_PER_IP=16
+CONCURRENT_REQUESTS_PER_DOMAIN=4
+CONCURRENT_REQUESTS_PER_IP=4
 
 # Disable cookies (enabled by default)
 #COOKIES_ENABLED=False
@@ -70,11 +70,11 @@ CONCURRENT_REQUESTS=4
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html
 # NOTE: AutoThrottle will honour the standard settings for concurrency and delay
-#AUTOTHROTTLE_ENABLED=True
+AUTOTHROTTLE_ENABLED=True
 # The initial download delay
 #AUTOTHROTTLE_START_DELAY=5
 # The maximum download delay to be set in case of high latencies
-#AUTOTHROTTLE_MAX_DELAY=60
+AUTOTHROTTLE_MAX_DELAY=60
 # Enable showing throttling stats for every response received:
 #AUTOTHROTTLE_DEBUG=False
 

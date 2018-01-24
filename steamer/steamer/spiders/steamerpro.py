@@ -72,26 +72,16 @@ class SteamerSpider(scrapy.Spider):
     name = 'steamerpro'
     allowed_domains = ('fangraphs.com', )
 
-    def __init__(self, batting_file=None, pitching_file=None, player_ids=None,
-                 *a, **kw):
+    def __init__(self, player_ids_file, *a, **kw):
         super(SteamerSpider, self).__init__(*a, **kw)
 
-        self.player_ids = parse_player_ids(player_ids)
+        if (not os.path.exists(player_ids_file)
+            or not os.path.isfile(player_ids_file)):
+            raise Exception(
+                reason='Path to file ({player_ids_file}) invalid or not file'
+                    .format(player_ids_file=player_ids_file))
 
-        if not self.player_ids and not any((batting_file, pitching_file)):
-            raise scrapy.exceptions.CloseSpider(
-                reason="""Please provide a path to one or both of
-                Fangraphs batting or pitching projection
-                CSV exports via `-a {pitching,batting}_file=...` arguments.
-                """)
-
-        if self.player_ids:
-            self.start_urls = (
-                PROFILE_URL.format(player_id=pid)
-                for pid in self.player_ids
-            )
-        else:
-            self.start_urls = urls_from_datafiles(batting_file, pitching_file)
+        self.start_urls = urls_from_datafiles(player_ids_file)
 
     def parse(self, response):
         """Extract Steamer stats from player pages
