@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import collections
+import csv
 import decimal
 import os
 import re
-import unicodecsv as csv
-import urlparse
+from urllib import parse
 
 import scrapy
 
@@ -12,7 +13,6 @@ from ..items import Projection
 
 
 PROFILE_URL = 'http://www.fangraphs.com/statss.aspx?playerid={player_id}'
-GAMELOG_URL = 'http://www.fangraphs.com/statsd.aspx?playerid={player_id}&position={position}'
 
 T_PITCHER = 'p'
 T_BATTER = 'b'
@@ -55,10 +55,6 @@ def get_player_url(player_id):
     return PROFILE_URL.format(player_id=player_id)
 
 
-def get_gamelog_url(player_id, position):
-    return GAMELOG_URL.format(player_id=player_id, position=position)
-
-
 def urls_from_datafiles(*files):
     paths = filter(lambda p: p is not None and os.path.exists(p),
                    files)
@@ -87,8 +83,8 @@ class SteamerSpider(scrapy.Spider):
         """Extract Steamer stats from player pages
         """
 
-        url_bits = urlparse.urlparse(response.url)
-        qs_bits = urlparse.parse_qs(url_bits.query)
+        url_bits = parse.urlparse(response.url)
+        qs_bits = parse.parse_qs(url_bits.query)
         player_id = qs_bits['playerid'][0]
         position = qs_bits['position'][0]
         player_type = T_PITCHER if position == 'P' else T_BATTER
@@ -142,7 +138,7 @@ class SteamerSpider(scrapy.Spider):
                 value = cell.xpath('text()').extract_first() or ''
                 value = value.strip()
                 if value.endswith('%'):
-                    value = unicode(parse_decimal(value))
+                    value = parse_decimal(value)
                 values.append(value)
 
             components.update(**dict(zip(keys, values)))
@@ -150,76 +146,33 @@ class SteamerSpider(scrapy.Spider):
         # remove "Team" column, which should always be "Steamer"
         components.pop('Team', None)
 
-        gamelog_url = get_gamelog_url(player_id, position)
+        # find positions fielded in previous year
+        positions = []
+        fielding_rows = response.xpath(
+            '//table[@id="SeasonStats1_dgSeason8_ctl00"]//tr/td/a[contains(., 2017)]/../..')
 
-        # pass combined projections to gamelog extraction
-        req = scrapy.Request(gamelog_url,
-                             dont_filter=True,
-                             callback=self.parse_gamelog)
-        req.meta.update(player_id=player_id,
-                        player_name=player_name,
-                        player_type=player_type,
-                        handedness={
-                            'bats': bats,
-                            'throws': throws,
-                        },
-                        components=components)
-        return req
+        for row in fielding_rows:
+            team = row.xpath('td[2]/a/text()').extract_first()
+            pos = row.xpath('td[3]//text()').extract_first()
+            g = row.xpath('td[4]//text()').extract_first()
+            gs = row.xpath('td[5]//text()').extract_first()
 
-    def get_pitcher_profile(self, selector):
-        tally = PITCHING_POSITIONS.copy()
+            positions.append({
+                'team': team,
+                'pos': pos,
+                'g': g,
+                'gs': gs,
+            })
 
-        for cell in selector.xpath(
-            '//table[@class="rgMasterTable"]/tbody/'
-            'tr[@class="rgRow" or @class="rgAltRow"]/td[4]/text()'):
-            games = cell.extract()
+        handedness = {
+            'bats': bats,
+            'throws': throws,
+        }
 
-            for gs in map(int, games):
-                pos = 'RP' if gs == 0 else 'SP'
-                tally[pos] += 1
-
-        return dict(tally)
-
-    def get_batter_profile(self, selector):
-        has_positions = selector.xpath("""
-            boolean(
-                //table[@class="rgMasterTable"]/thead/tr/th/a[contains(., "Pos")]
-            )
-        """).extract_first()
-
-        if bool(int(has_positions)) == False:
-            return {}
-
-        tally = BATTING_POSITIONS.copy()
-
-        for cell in selector.xpath(
-            '//table[@class="rgMasterTable"]/tbody/'
-            'tr[@class="rgRow" or @class="rgAltRow"]/td[5]'):
-            positions = cell.xpath('text()').extract_first() or ''
-            positions = [pos.strip() for pos in positions.split('-')]
-
-            for pos in positions:
-                if pos:
-                    tally[pos] += 1
-
-        return dict(tally)
-
-    def parse_gamelog(self, response):
-        """Extract pitcher game log for previous season
-        """
-
-        self.logger.debug('Fetching gamelog for {} ({})'.format(
-                          response.meta['player_name'],
-                          response.meta['player_id']))
-
-        if response.meta['player_type'] == T_PITCHER:
-            positions = self.get_pitcher_profile(response)
-        else:
-            positions = self.get_batter_profile(response)
-
-        return Projection(player_id=response.meta['player_id'],
-                          player_name=response.meta['player_name'],
-                          player_type=response.meta['player_type'],
-                          components=response.meta['components'],
-                          handedness=response.meta['handedness'],
-                          positions=positions)
+        yield Projection(
+            player_id=player_id,
+            player_name=player_name,
+            player_type=player_type,
+            components=components,
+            handedness=handedness,
+            positions=positions)
