@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import collections
 import csv
 import decimal
 import os
@@ -19,68 +18,100 @@ T_BATTER = 'b'
 
 PCT_RE = re.compile(r'([\.\d]+)\s+?%')
 
-BATTING_POSITIONS = {
-    'C':  0,
-    '1B': 0,
-    '2B': 0,
-    'SS': 0,
-    '3B': 0,
-    'LF': 0,
-    'CF': 0,
-    'RF': 0,
-    'DH': 0,
-    'PH': 0,
-    'PR': 0,
-    'P':  0,
-}
-
-PITCHING_POSITIONS = {'SP': 0, 'RP': 0, 'P': 0}
-
 
 def parse_player_ids(value):
+    """Splits a list of player ids by comma
+
+    Args:
+        value: String of comma-separated player ids
+
+    Returns:
+        List of player ids
+    """
+
     if value:
         return [v.strip() for v in value.split(',')]
+
     return value
 
 
 def parse_decimal(value):
+    """Extracts a numerical value from percentage representation
+
+    Args:
+        value: String percentage value (e.g., "100%")
+
+    Returns:
+        Percentage as decimal value (decimal.Decimal instance)
+    """
+
     match = PCT_RE.match(value)
+
     if not match:
         return None
+
     value = decimal.Decimal(match.group(1))
+
     return value / decimal.Decimal('100.0')
 
 
 def get_player_url(player_id):
+    """Returns a Fangraphs player URL for given id
+
+    Args:
+        player_id: Fangraphs player id
+
+    Returns:
+        Player stats page URL (string)
+    """
+
     return PROFILE_URL.format(player_id=player_id)
 
 
-def urls_from_datafiles(*files):
-    paths = filter(lambda p: p is not None and os.path.exists(p),
-                   files)
-    for path in paths:
-        reader = csv.DictReader(open(path, 'r'))
-        for row in reader:
-            yield get_player_url(row['playerid'])
+def urls_from_datafile(path):
+    """Creates player URLs from player ids in a CSV file
+
+    Args:
+        path: Absolute path to player ids CSV file
+
+    Returns:
+        Player URLs (generator)
+    """
+
+    reader = csv.DictReader(open(path, 'r'))
+
+    for row in reader:
+        yield get_player_url(row['playerid'])
 
 
 class SteamerSpider(scrapy.Spider):
     name = 'steamerpro'
     allowed_domains = ('fangraphs.com', )
 
-    def __init__(self, player_ids_file, *a, **kw):
+    def __init__(self, player_ids_file=None, player_ids=None, *a, **kw):
         super(SteamerSpider, self).__init__(*a, **kw)
 
-        if (not os.path.exists(player_ids_file)
-            or not os.path.isfile(player_ids_file)):
-            raise Exception(
-                reason='Path to file ({player_ids_file}) invalid or not file'
-                    .format(player_ids_file=player_ids_file))
-
-        self.start_urls = urls_from_datafiles(player_ids_file)
+        if player_ids is not None:
+            ids = parse_player_ids(player_ids)
+            self.start_urls = (get_player_url(id) for id in ids)
+        elif player_ids_file is not None:
+            player_ids_file = os.path.abspath(player_ids_file)
+            if (not os.path.exists(os.path.abspath(player_ids_file))
+                or not os.path.isfile(player_ids_file)):
+                raise Exception(
+                    f'Path to file ({player_ids_file}) invalid or not file')
+            self.start_urls = urls_from_datafile(player_ids_file)
+        else:
+            raise Exception('Cannot parse without player ids')
 
     def parse(self, response):
         """Extract Steamer stats from player pages
+
+        Args:
+            response: Scrapy response
+
+        Returns:
+            Full `Projection` if player is projected, else `None`
         """
 
         url_bits = parse.urlparse(response.url)
@@ -169,7 +200,7 @@ class SteamerSpider(scrapy.Spider):
             'throws': throws,
         }
 
-        yield Projection(
+        return Projection(
             player_id=player_id,
             player_name=player_name,
             player_type=player_type,
